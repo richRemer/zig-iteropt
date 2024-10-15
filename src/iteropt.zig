@@ -93,31 +93,6 @@ pub fn OptArg(comptime Option: type) type {
         option: Option,
         terminator: void,
         usage: Usage,
-
-        pub fn initArgument(arg: []const u8) @This() {
-            return .{ .argument = arg };
-        }
-
-        pub fn initFlag(comptime opt: []const u8) @This() {
-            return .{ .option = @unionInit(Option, opt, undefined) };
-        }
-
-        pub fn initOption(comptime opt: []const u8, val: []const u8) @This() {
-            return .{ .option = @unionInit(Option, opt, val) };
-        }
-
-        pub fn initTerminator() @This() {
-            return .{ .terminator = undefined };
-        }
-
-        pub fn initUsage(
-            err: UsageError,
-            arg: []const u8,
-            opt: []const u8,
-            val: ?[]const u8,
-        ) @This() {
-            return .{ .usage = Usage.init(err, arg, opt, val) };
-        }
     };
 }
 
@@ -145,18 +120,18 @@ pub fn OptIterator(
             if (this.arg) |arg| {
                 if (this.terminated) {
                     this.arg = this.args.next();
-                    return OptionArgument.initArgument(arg);
+                    return argument(Option, arg);
                 } else if (std.mem.eql(u8, "--", arg)) {
                     this.arg = this.args.next();
                     this.terminated = true;
-                    return OptionArgument.initTerminator();
+                    return terminator(Option);
                 } else if (std.mem.eql(u8, "--", arg[0..2])) {
                     return this.nextLong(arg);
                 } else if (arg[0] == '-') {
                     return this.nextShort(arg);
                 } else {
                     this.arg = this.args.next();
-                    return OptionArgument.initArgument(arg);
+                    return argument(Option, arg);
                 }
             } else {
                 return null;
@@ -179,22 +154,22 @@ pub fn OptIterator(
             inline for (fields) |f| if (std.mem.eql(u8, name, f.name)) {
                 if (void == std.meta.TagPayloadByName(Option, f.name)) {
                     if (value) |val| {
-                        return OptionArgument.initUsage(.unexpected_argument, arg, f.name, val);
+                        return usage(Option, .unexpected_argument, arg, f.name, val);
                     } else {
-                        return OptionArgument.initFlag(f.name);
+                        return flag(Option, f.name);
                     }
                 }
 
                 value = value orelse this.args.next();
 
                 if (value) |val| {
-                    return OptionArgument.initOption(f.name, val);
+                    return option(Option, f.name, val);
                 } else {
-                    return OptionArgument.initUsage(.missing_argument, arg, f.name, null);
+                    return usage(Option, .missing_argument, arg, f.name, null);
                 }
             };
 
-            return OptionArgument.initUsage(.unknown_option, arg, name, value);
+            return usage(Option, .unknown_option, arg, name, value);
         }
 
         // TODO: handle bad data and other errors
@@ -215,7 +190,7 @@ pub fn OptIterator(
                         this.offset += 1;
                     }
 
-                    return OptionArgument.initFlag(f.name);
+                    return flag(Option, f.name);
                 } else {
                     const rest = arg[this.offset + 1 ..];
 
@@ -224,14 +199,14 @@ pub fn OptIterator(
                     this.arg = this.args.next();
 
                     if (value) |val| {
-                        return OptionArgument.initOption(f.name, val);
+                        return option(Option, f.name, val);
                     } else {
-                        return OptionArgument.initUsage(.missing_argument, arg, name, null);
+                        return usage(Option, .missing_argument, arg, name, null);
                     }
                 }
             };
 
-            return OptionArgument.initUsage(.unknown_option, arg, name, value);
+            return usage(Option, .unknown_option, arg, name, value);
         }
     };
 }
@@ -241,20 +216,6 @@ pub const Usage = struct {
     argument: []const u8,
     option: []const u8,
     value: ?[]const u8,
-
-    pub fn init(
-        err: UsageError,
-        arg: []const u8,
-        opt: []const u8,
-        val: ?[]const u8,
-    ) Usage {
-        return .{
-            .@"error" = err,
-            .argument = arg,
-            .option = opt,
-            .value = val,
-        };
-    }
 };
 
 pub const UsageError = enum(u8) {
@@ -262,3 +223,38 @@ pub const UsageError = enum(u8) {
     missing_argument,
     unexpected_argument,
 };
+
+fn argument(comptime Option: type, arg: []const u8) OptArg(Option) {
+    return .{ .argument = arg };
+}
+
+fn flag(comptime Option: type, comptime opt: []const u8) OptArg(Option) {
+    return .{ .option = @unionInit(Option, opt, undefined) };
+}
+
+fn option(
+    comptime Option: type,
+    comptime opt: []const u8,
+    val: []const u8,
+) OptArg(Option) {
+    return .{ .option = @unionInit(Option, opt, val) };
+}
+
+fn terminator(comptime Option: type) OptArg(Option) {
+    return .{ .terminator = undefined };
+}
+
+fn usage(
+    comptime Option: type,
+    err: UsageError,
+    arg: []const u8,
+    opt: []const u8,
+    val: ?[]const u8,
+) OptArg(Option) {
+    return .{ .usage = .{
+        .@"error" = err,
+        .argument = arg,
+        .option = opt,
+        .value = val,
+    } };
+}
