@@ -16,6 +16,8 @@ pub const AppConfig = struct {
 };
 
 pub fn main() void {
+    const stderr = std.io.getStdErr().writer();
+
     var config = AppConfig{};
     var args = std.process.args();
     var it = OptionIterator.init(&args);
@@ -27,6 +29,16 @@ pub fn main() void {
             .o, .output => |output| config.output = output,
             .q, .quiet => config.verbose = false,
             .v, .verbose => config.verbose = true,
+        },
+        .usage => |use| {
+            const message = switch (use.@"error") {
+                .unknown_option => "unknown option",
+                .missing_argument => "missing argument for option",
+                .unexpected_argument => "unexpected argument for option",
+            };
+
+            stderr.print("{s} -- {s}\n", .{ message, use.option }) catch {};
+            std.process.exit(1);
         },
     };
 
