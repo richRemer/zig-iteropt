@@ -1,5 +1,5 @@
 const std = @import("std");
-const OptIterator = @import("iteropt.zig").OptIterator;
+const OptIterator = @import("iteropt").OptIterator;
 
 const OptionIterator = OptIterator(
     "vqo:",

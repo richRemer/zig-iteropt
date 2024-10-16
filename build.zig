@@ -4,6 +4,12 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const iteropt = b.addModule("iteropt", .{
+        .root_source_file = b.path("src/iteropt.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const exe = b.addExecutable(.{
         .name = "iteropt-demo",
         .root_source_file = b.path("src/demo.zig"),
@@ -31,6 +37,7 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
 
+    exe.root_module.addImport("iteropt", iteropt);
     run_cmd.step.dependOn(b.getInstallStep());
     run_step.dependOn(&run_cmd.step);
     test_step.dependOn(&run_mod_unit_tests.step);
