@@ -258,3 +258,205 @@ fn usage(
         .value = val,
     } };
 }
+
+test "simple positional arguments" {
+    const Iterator = OptIterator("vqo:", &.{});
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    const test_case = try TestCase.init(&arena, &.{ "cmd", "foo", "bar" });
+    defer test_case.deinit();
+
+    var args = std.process.ArgIterator.init();
+    var it = Iterator.init(&args);
+
+    const first_arg = it.next().?;
+    const second_arg = it.next().?;
+    const third_arg = it.next().?;
+    const end = it.next();
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(first_arg));
+    try std.testing.expectEqualSlices(u8, "argument", @tagName(first_arg));
+    try std.testing.expectEqualSlices(u8, "cmd", first_arg.argument);
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(second_arg));
+    try std.testing.expectEqualSlices(u8, "argument", @tagName(second_arg));
+    try std.testing.expectEqualSlices(u8, "foo", second_arg.argument);
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(third_arg));
+    try std.testing.expectEqualSlices(u8, "argument", @tagName(third_arg));
+    try std.testing.expectEqualSlices(u8, "bar", third_arg.argument);
+
+    try std.testing.expectEqual(null, end);
+}
+
+test "short options" {
+    const Iterator = OptIterator("vqo:", &.{});
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    const test_case = try TestCase.init(&arena, &.{ "cmd", "-v", "-qo", "file" });
+    defer test_case.deinit();
+
+    var args = std.process.ArgIterator.init();
+    var it = Iterator.init(&args);
+
+    const cmd = it.next().?;
+    const first_opt = it.next().?;
+    const second_opt = it.next().?;
+    const third_opt = it.next().?;
+    const end = it.next();
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(cmd));
+    try std.testing.expectEqualSlices(u8, "argument", @tagName(cmd));
+    try std.testing.expectEqualSlices(u8, "cmd", cmd.argument);
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(first_opt));
+    try std.testing.expectEqualSlices(u8, "option", @tagName(first_opt));
+    try std.testing.expectEqualSlices(u8, "v", @tagName(first_opt.option));
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(second_opt));
+    try std.testing.expectEqualSlices(u8, "option", @tagName(second_opt));
+    try std.testing.expectEqualSlices(u8, "q", @tagName(second_opt.option));
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(third_opt));
+    try std.testing.expectEqualSlices(u8, "option", @tagName(third_opt));
+    try std.testing.expectEqualSlices(u8, "o", @tagName(third_opt.option));
+    try std.testing.expectEqualSlices(u8, "file", third_opt.option.o);
+
+    try std.testing.expectEqual(null, end);
+}
+
+test "short options with value" {
+    const Iterator = OptIterator("vqo:", &.{});
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    const test_case = try TestCase.init(&arena, &.{ "cmd", "-vofile", "-q" });
+    defer test_case.deinit();
+
+    var args = std.process.ArgIterator.init();
+    var it = Iterator.init(&args);
+
+    const cmd = it.next().?;
+    const first_opt = it.next().?;
+    const second_opt = it.next().?;
+    const third_opt = it.next().?;
+    const end = it.next();
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(cmd));
+    try std.testing.expectEqualSlices(u8, "argument", @tagName(cmd));
+    try std.testing.expectEqualSlices(u8, "cmd", cmd.argument);
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(first_opt));
+    try std.testing.expectEqualSlices(u8, "option", @tagName(first_opt));
+    try std.testing.expectEqualSlices(u8, "v", @tagName(first_opt.option));
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(second_opt));
+    try std.testing.expectEqualSlices(u8, "option", @tagName(second_opt));
+    try std.testing.expectEqualSlices(u8, "o", @tagName(second_opt.option));
+    try std.testing.expectEqualSlices(u8, "file", second_opt.option.o);
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(third_opt));
+    try std.testing.expectEqualSlices(u8, "option", @tagName(third_opt));
+    try std.testing.expectEqualSlices(u8, "q", @tagName(third_opt.option));
+
+    try std.testing.expectEqual(null, end);
+}
+
+test "long options" {
+    const Iterator = OptIterator("", &.{ "flag", "with-val:" });
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    const test_case = try TestCase.init(&arena, &.{ "cmd", "--flag", "--with-val", "val" });
+    defer test_case.deinit();
+
+    var args = std.process.ArgIterator.init();
+    var it = Iterator.init(&args);
+
+    const cmd = it.next().?;
+    const first_opt = it.next().?;
+    const second_opt = it.next().?;
+    const end = it.next();
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(cmd));
+    try std.testing.expectEqualSlices(u8, "argument", @tagName(cmd));
+    try std.testing.expectEqualSlices(u8, "cmd", cmd.argument);
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(first_opt));
+    try std.testing.expectEqualSlices(u8, "option", @tagName(first_opt));
+    try std.testing.expectEqualSlices(u8, "flag", @tagName(first_opt.option));
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(second_opt));
+    try std.testing.expectEqualSlices(u8, "option", @tagName(second_opt));
+    try std.testing.expectEqualSlices(u8, "with-val", @tagName(second_opt.option));
+    try std.testing.expectEqualSlices(u8, "val", second_opt.option.@"with-val");
+
+    try std.testing.expectEqual(null, end);
+}
+
+test "long options with value" {
+    const Iterator = OptIterator("", &.{ "flag", "with-val:" });
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+
+    const test_case = try TestCase.init(&arena, &.{ "cmd", "--flag", "--with-val=val" });
+    defer test_case.deinit();
+
+    var args = std.process.ArgIterator.init();
+    var it = Iterator.init(&args);
+
+    const cmd = it.next().?;
+    const first_opt = it.next().?;
+    const second_opt = it.next().?;
+    const end = it.next();
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(cmd));
+    try std.testing.expectEqualSlices(u8, "argument", @tagName(cmd));
+    try std.testing.expectEqualSlices(u8, "cmd", cmd.argument);
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(first_opt));
+    try std.testing.expectEqualSlices(u8, "option", @tagName(first_opt));
+    try std.testing.expectEqualSlices(u8, "flag", @tagName(first_opt.option));
+
+    try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(second_opt));
+    try std.testing.expectEqualSlices(u8, "option", @tagName(second_opt));
+    try std.testing.expectEqualSlices(u8, "with-val", @tagName(second_opt.option));
+    try std.testing.expectEqualSlices(u8, "val", second_opt.option.@"with-val");
+
+    try std.testing.expectEqual(null, end);
+}
+
+const TestCase = struct {
+    arena: *std.heap.ArenaAllocator,
+    allocator: std.mem.Allocator,
+    argv: [][*:0]u8,
+    saved_argv: [][*:0]u8,
+
+    pub fn init(
+        arena: *std.heap.ArenaAllocator,
+        args: []const [:0]const u8,
+    ) !TestCase {
+        const allocator = arena.allocator();
+        const argv = try allocator.alloc([*:0]u8, args.len);
+
+        for (args, 0..) |arg, i| {
+            argv[i] = try allocator.dupeZ(u8, arg);
+        }
+
+        const saved_argv = std.os.argv;
+        std.os.argv = argv;
+
+        return .{
+            .arena = arena,
+            .allocator = allocator,
+            .argv = argv,
+            .saved_argv = saved_argv,
+        };
+    }
+
+    pub fn deinit(this: TestCase) void {
+        std.os.argv = this.saved_argv;
+    }
+};
