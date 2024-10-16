@@ -125,7 +125,7 @@ pub fn OptIterator(
                     this.arg = this.args.next();
                     this.terminated = true;
                     return terminator(Option);
-                } else if (std.mem.eql(u8, "--", arg[0..2])) {
+                } else if (arg.len > 2 and std.mem.eql(u8, "--", arg[0..2])) {
                     return this.nextLong(arg);
                 } else if (arg[0] == '-') {
                     return this.nextShort(arg);
@@ -264,7 +264,7 @@ test "simple positional arguments" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
-    const test_case = try TestCase.init(&arena, &.{ "cmd", "foo", "bar" });
+    const test_case = try TestCase.init(&arena, &.{ "cmd", "a", "b" });
     defer test_case.deinit();
 
     var args = std.process.ArgIterator.init();
@@ -281,17 +281,17 @@ test "simple positional arguments" {
 
     try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(second_arg));
     try std.testing.expectEqualSlices(u8, "argument", @tagName(second_arg));
-    try std.testing.expectEqualSlices(u8, "foo", second_arg.argument);
+    try std.testing.expectEqualSlices(u8, "a", second_arg.argument);
 
     try std.testing.expectEqual(Iterator.OptionArgument, @TypeOf(third_arg));
     try std.testing.expectEqualSlices(u8, "argument", @tagName(third_arg));
-    try std.testing.expectEqualSlices(u8, "bar", third_arg.argument);
+    try std.testing.expectEqualSlices(u8, "b", third_arg.argument);
 
     try std.testing.expectEqual(null, end);
 }
 
 test "short options" {
-    const Iterator = OptIterator("vqo:", &.{});
+    const Iterator = OptIterator("vqf:o:", &.{});
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
@@ -328,7 +328,7 @@ test "short options" {
 }
 
 test "short options with value" {
-    const Iterator = OptIterator("vqo:", &.{});
+    const Iterator = OptIterator("vqf:o:", &.{});
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
 
