@@ -20,10 +20,10 @@ pub fn Opt(
     comptime var enum_fields: [fields_max_len]Type.EnumField = undefined;
     comptime var union_fields: [fields_max_len]Type.UnionField = undefined;
 
-    for (shorts) |ch| {
+    for (shorts, 0..) |ch, idx| {
         switch (ch) {
             '0'...'9', 'a'...'z', 'A'...'Z' => {
-                const has_arg = shorts.len > i and shorts[i + 1] == ':';
+                const has_arg = shorts.len > idx and shorts[idx + 1] == ':';
                 const T = if (has_arg) []const u8 else void;
 
                 enum_fields[i] = Type.EnumField{
